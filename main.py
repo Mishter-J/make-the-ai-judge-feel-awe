@@ -8,7 +8,6 @@ judging against the judge's five published criteria (see candidates.md).
 """
 
 import os
-import tempfile
 
 ENTRY = (
     "The tide went out hours ago.\n"
@@ -32,21 +31,14 @@ def validate_entry(text: str) -> None:
 
 def main() -> None:
     validate_entry(ENTRY)
-    out_dir = "/output"
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, "entry.txt")
-    # Write atomically: a partial write must never leave a truncated entry.
-    fd, tmp_path = tempfile.mkstemp(dir=out_dir, prefix=".entry-", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
-            f.write(ENTRY)
-        os.replace(tmp_path, path)
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    # Write directly: the grader's output-folder rules forbid stray temp
+    # files in /output, and the entry must be world-readable (0644).
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(ENTRY)
+    os.chmod(path, 0o644)
 
 
 if __name__ == "__main__":
